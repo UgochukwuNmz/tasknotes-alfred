@@ -11,6 +11,7 @@ import sys
 import urllib.parse
 from typing import Any, Dict, List, Optional
 
+from cache import TaskCache
 from utils import (
     get_emoji_icon_path,
     get_tasknotes_api_base,
@@ -84,6 +85,25 @@ def _search_task_by_title(title: str) -> Optional[Dict[str, Any]]:
     except Exception:
         pass
 
+    return None
+
+
+def _find_task_in_cache(task_path: str) -> Optional[Dict[str, Any]]:
+    """Find task in local cache when API is unavailable.
+
+    Used as fallback when API calls fail (e.g., Obsidian is closed).
+    The cache was populated by list_or_parse_task.py when user saw the task list.
+    """
+    if not task_path:
+        return None
+
+    cache = TaskCache()
+    status = cache.get_cache_status()
+    tasks = status.get("tasks", [])
+
+    for task in tasks:
+        if task.get("path") == task_path:
+            return task
     return None
 
 
@@ -173,21 +193,26 @@ def main() -> int:
             task = found_task
             task_path = str(found_task.get("path"))  # Update to correct path
         else:
-            # Task not found - show error with Go Back option
-            _alfred_output([
-                {
-                    "title": "Task not found",
-                    "subtitle": f"Could not find \"{title_from_path}\" - it may have been deleted",
-                    "valid": False,
-                },
-                _build_action_item(
-                    "Go Back",
-                    "Return to task list",
-                    {"action": "go_back"},
-                    "⬅️", "action_back",
-                ),
-            ])
-            return 0
+            # Try cache before giving up (handles Obsidian closed scenario)
+            cached_task = _find_task_in_cache(task_path)
+            if cached_task:
+                task = cached_task
+            else:
+                # Task not found - show error with Go Back option
+                _alfred_output([
+                    {
+                        "title": "Task not found",
+                        "subtitle": f"Could not find \"{title_from_path}\" - it may have been deleted",
+                        "valid": False,
+                    },
+                    _build_action_item(
+                        "Go Back",
+                        "Return to task list",
+                        {"action": "go_back"},
+                        "⬅️", "action_back",
+                    ),
+                ])
+                return 0
 
     # Use API title if available, otherwise extract from path
     if task and task.get("title"):
