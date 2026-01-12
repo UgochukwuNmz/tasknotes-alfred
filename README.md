@@ -147,7 +147,7 @@ Create tasks with metadata using natural language. The parser understands:
 | Keyword | Sets Field |
 |---------|------------|
 | `due`, `by` | Due date |
-| `on`, `scheduled`, `start` | Scheduled date |
+| `sch`, `on`, `scheduled`, `start` | Scheduled date |
 | *(bare date)* | Scheduled date (default) |
 
 ### Priority
