@@ -211,6 +211,10 @@ Set these environment variables in the Alfred workflow settings:
 | `TASK_SUBTITLE_FIELDS` | Fields shown in subtitle | `due,scheduled,projects` |
 | `TASK_CACHE_TTL_SECONDS` | Cache freshness duration | `5` |
 | `TASK_CACHE_MAX_STALE_SECONDS` | Max cache age before refresh | `600` |
+| `TASK_CACHE_RERUN_SECONDS` | Delay before background refresh on rerun | `0.4` |
+| `TASK_CACHE_REFRESH_BACKOFF_SECONDS` | Min time between background refreshes | `5` |
+| `TIME_ACTIVE_CACHE_TTL_SECONDS` | Active time tracking cache TTL | `1` |
+| `TASK_DETAIL_CACHE_TTL_SECONDS` | Task detail cache TTL | `2` |
 
 ### Behavior
 
@@ -219,6 +223,8 @@ Set these environment variables in the Alfred workflow settings:
 | `AUTO_START_OBSIDIAN_FOR_API` | Auto-launch Obsidian if API unreachable | `1` |
 | `LAUNCH_OBSIDIAN_ON_ERROR` | Launch Obsidian on connection errors | `1` |
 | `TASKNOTES_STARTUP_WAIT_SECONDS` | Max wait time for Obsidian to start | `12` |
+| `TASKNOTES_HEALTH_POLL_INTERVAL_SECONDS` | Health check polling interval | `0.25` |
+| `TASKNOTES_BOOTSTRAP_NOTIFY` | Show notification during Obsidian startup | `1` |
 
 ## Time Tracking
 
@@ -228,7 +234,7 @@ TaskNotes enforces a single active time tracking session. When you start trackin
 2. The new task begins tracking
 3. The tracked task appears at the top of your list with a ⏱ icon
 
-Toggle tracking with `⌥↩` - if the task is already being tracked, it stops; otherwise, it starts.
+Toggle tracking with `⌃↩` - if the task is already being tracked, it stops; otherwise, it starts.
 
 ## Subtitle Display
 

@@ -407,6 +407,11 @@ def _parse_date_phrase(tokens: List[str], i: int, today: date, *, allow_past: bo
         if low1 in _WEEKDAYS:
             d = _next_weekday(today, _WEEKDAYS[low1], force_next_week=True)
             return _iso(d), 2
+        # next week / next month
+        if low1 == "week":
+            return _iso(today + timedelta(days=7)), 2
+        if low1 == "month":
+            return _iso(_add_months(today, 1)), 2
 
     # last <weekday>
     if low0 == "last" and i + 1 < len(tokens):
@@ -629,8 +634,8 @@ def parse_create_input(raw: str, *, today: Optional[date] = None) -> ParsedCreat
                     i += 1
                     continue
 
-        # do <date phrase> | sch <date phrase>
-        if low in ("do", "sch"):
+        # do <date phrase> | sch <date phrase> | on <date phrase> | start <date phrase> | scheduled <date phrase>
+        if low in ("do", "sch", "on", "start", "scheduled"):
             dt, consumed = _parse_date_phrase(tokens, i + 1, today, allow_past=True)
             if dt:
                 scheduled = dt
