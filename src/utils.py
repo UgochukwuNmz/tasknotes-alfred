@@ -2,7 +2,7 @@
 """Shared utilities for TaskNotes Alfred workflow.
 
 Provides common functionality used across multiple modules:
-- Emoji icon generation for Alfred items
+- Emoji icon lookup for Alfred items
 - HTTP request helpers
 - Task status checking
 - Constants
@@ -11,10 +11,7 @@ Provides common functionality used across multiple modules:
 import json
 import os
 import urllib.request
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from cache import get_cache_dir
+from typing import Any, Dict, Optional
 
 
 # -----------------------------
@@ -49,75 +46,29 @@ def get_tasknotes_token() -> str:
 
 
 # -----------------------------
-# Emoji icon generation
+# Emoji icon lookup
 # -----------------------------
 def get_emoji_icon_path(emoji: str, name: str) -> str:
     """
-    Get path to a PNG icon for the given emoji, generating it if needed.
+    Get path to a bundled PNG icon for the given name.
 
-    Uses Pillow to render emoji to PNG and caches in Alfred's cache dir.
-    Falls back to empty string (default icon) if generation fails.
+    Icons are pre-generated and bundled in the workflow's icons/ directory.
 
     Args:
-        emoji: The emoji character to render
-        name: A unique name for caching (e.g., "filter_today", "action_complete")
+        emoji: The emoji character (unused, kept for API compatibility)
+        name: Icon name (e.g., "today", "action_complete")
 
     Returns:
-        Path to the generated PNG icon, or empty string on failure
+        Path to the bundled PNG icon, or empty string if not found
     """
-    cache_dir = Path(get_cache_dir()) / "icons"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    # Get workflow directory (parent of src/)
+    workflow_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    icon_path = os.path.join(workflow_dir, "icons", f"{name}.png")
 
-    icon_path = cache_dir / f"{name}.png"
+    if os.path.exists(icon_path):
+        return icon_path
 
-    # Return cached icon if it exists
-    if icon_path.exists():
-        return str(icon_path)
-
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-
-        # Create image with transparent background
-        size = 64
-        img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-
-        # Try to use Apple Color Emoji font, fall back to default
-        font = None
-        font_paths = [
-            "/System/Library/Fonts/Apple Color Emoji.ttc",
-            "/System/Library/Fonts/AppleColorEmoji.ttf",
-        ]
-        for font_path in font_paths:
-            if os.path.exists(font_path):
-                try:
-                    font = ImageFont.truetype(font_path, 48)
-                    break
-                except Exception:
-                    continue
-
-        if font is None:
-            # Use default font as fallback
-            try:
-                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 48)
-            except Exception:
-                font = ImageFont.load_default()
-
-        # Draw emoji centered
-        bbox = draw.textbbox((0, 0), emoji, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (size - text_width) // 2 - bbox[0]
-        y = (size - text_height) // 2 - bbox[1]
-        draw.text((x, y), emoji, font=font, embedded_color=True)
-
-        img.save(str(icon_path), 'PNG')
-
-    except Exception:
-        # Fall back to default icon if generation fails
-        return ""
-
-    return str(icon_path) if icon_path.exists() else ""
+    return ""
 
 
 # -----------------------------

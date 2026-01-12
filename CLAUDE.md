@@ -86,7 +86,7 @@ External Trigger (main) → Script Filter (for "Go Back")
    - TaskDetailCache: Single task details for tracked task injection (available but not currently used)
 
 7. **`src/utils.py`** - Shared Utilities
-   - `get_emoji_icon_path()`: Generate PNG icons from emoji for Alfred items
+   - `get_emoji_icon_path()`: Look up bundled PNG icons for Alfred items
    - `http_get_json()`: HTTP GET with TaskNotes authentication
    - `get_field()`, `is_completed()`, `is_archived()`: Task field accessors
    - `get_workflow_icon_path()`: Get path to workflow icon
