@@ -60,26 +60,27 @@ def _search_task_by_title(title: str) -> Optional[Dict[str, Any]]:
     """Search for a task by title (including archived tasks).
 
     Used as fallback when primary path lookup fails (e.g., task was archived/moved).
-    Uses the same list_tasks() function that powers the !archived filter.
+    Searches both active and archived tasks.
     """
     if not title:
         return None
 
     try:
-        # Use same API call as !archived filter - this is proven to work
-        tasks = tn_list_tasks(limit=500, archived=True)
+        # Search active tasks first, then archived
+        for archived in [False, True]:
+            tasks = tn_list_tasks(limit=500, archived=archived)
 
-        for task in tasks:
-            if task.title == title:
-                return {
-                    "path": task.path,
-                    "title": task.title,
-                    "status": task.status,
-                    "priority": task.priority,
-                    "scheduled": task.scheduled,
-                    "archived": task.archived,
-                    "completed": task.completed,
-                }
+            for task in tasks:
+                if task.title == title:
+                    return {
+                        "path": task.path,
+                        "title": task.title,
+                        "status": task.status,
+                        "priority": task.priority,
+                        "scheduled": task.scheduled,
+                        "archived": task.archived,
+                        "completed": task.completed,
+                    }
     except Exception:
         pass
 
