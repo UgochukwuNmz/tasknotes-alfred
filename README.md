@@ -174,6 +174,13 @@ Use `//` to add details/notes to a task:
 Buy groceries tomorrow // milk, eggs, bread
 ```
 
+For multi-line details, use `\\n` or double spaces:
+
+```
+Meeting notes // Point 1\\nPoint 2\\nPoint 3
+Shopping list // eggs  milk  bread
+```
+
 ### Examples
 
 ```
