@@ -282,7 +282,7 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 				<key>argumenttrimmode</key>
 				<integer>0</integer>
 				<key>argumenttype</key>
-				<integer>0</integer>
+				<integer>1</integer>
 				<key>escaping</key>
 				<integer>102</integer>
 				<key>queuedelaycustom</key>
