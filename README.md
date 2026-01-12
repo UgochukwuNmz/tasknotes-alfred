@@ -96,6 +96,7 @@ Type `!` to see all available filters with autocomplete:
 | 🗓️ `!tomorrow` | Tasks due or scheduled for tomorrow |
 | ⚠️ `!overdue` | Tasks past their due or scheduled date |
 | ✅ `!complete` | Completed tasks |
+| 📦 `!archived` | Archived tasks |
 | 🔴 `!p1` | High priority tasks |
 | 🟡 `!p2` | Medium priority tasks |
 | 🟢 `!p3` | Low priority tasks |
@@ -192,13 +193,21 @@ Submit expenses by jan 15 p2 #finance
 
 ## Configuration
 
-Set these environment variables in the Alfred workflow settings:
+Set these environment variables in the Alfred workflow settings (click the `[x]` icon in the workflow editor):
 
 ### Required
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OBSIDIAN_VAULT` | Your Obsidian vault name | - |
+
+**Important**: You must set `OBSIDIAN_VAULT` to your vault's name for the workflow to open tasks in Obsidian. To find your vault name, open Obsidian and look at the vault switcher (bottom-left), or check the folder name of your vault.
+
+For more reliability (especially if you rename your vault), also set `OBSIDIAN_VAULT_ID`:
+1. Open Obsidian
+2. Open the Developer Console (`⌘⌥I` or `Ctrl+Shift+I`)
+3. Run: `app.appId`
+4. Copy the returned ID and set it as `OBSIDIAN_VAULT_ID`
 
 ### Optional
 

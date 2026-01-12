@@ -128,7 +128,7 @@ def _parse_quick_filter(query: str) -> Tuple[Optional[str], str]:
     Parse quick filter prefix from query.
 
     Returns: (filter_type, remaining_query)
-    filter_type is one of: 'today', 'tomorrow', 'overdue', 'complete', 'p1', 'p2', 'p3', or None
+    filter_type is one of: 'today', 'tomorrow', 'overdue', 'complete', 'archived', 'p1', 'p2', 'p3', or None
     """
     q = query.strip()
     filters = {
@@ -136,6 +136,7 @@ def _parse_quick_filter(query: str) -> Tuple[Optional[str], str]:
         "!tomorrow": "tomorrow",
         "!overdue": "overdue",
         "!complete": "complete",
+        "!archived": "archived",
         "!p1": "p1",
         "!p2": "p2",
         "!p3": "p3",
@@ -157,6 +158,7 @@ _FILTER_INFO = [
     ("!tomorrow", "tomorrow", "Tomorrow", "Tasks due or scheduled for tomorrow", "🗓️"),
     ("!overdue", "overdue", "Overdue", "Tasks past their due or scheduled date", "⚠️"),
     ("!complete", "complete", "Complete", "Completed tasks", "✅"),
+    ("!archived", "archived", "Archived", "Archived tasks", "📦"),
     ("!p1", "p1", "P1", "High priority tasks", "🔴"),
     ("!p2", "p2", "P2", "Medium priority tasks", "🟡"),
     ("!p3", "p3", "P3", "Low priority tasks", "🟢"),
@@ -270,6 +272,9 @@ def _apply_quick_filter(tasks: List[Dict[str, Any]], filter_type: str) -> List[D
                 filtered.append(t)
         elif filter_type == "complete":
             if is_completed(t):
+                filtered.append(t)
+        elif filter_type == "archived":
+            if is_archived(t):
                 filtered.append(t)
         elif filter_type == "p1":
             if priority in ("high", "1", "p1", "highest"):
@@ -508,7 +513,7 @@ def _build_create_item(query: str, *, include_alt_switch: bool = False) -> Dict[
 # -----------------------------
 # Task list fetching with cache
 # -----------------------------
-def _fetch_tasks_with_cache(fetch_limit: int, *, include_completed: bool = False) -> Tuple[List[Dict[str, Any]], Optional[float]]:
+def _fetch_tasks_with_cache(fetch_limit: int, *, include_completed: bool = False, include_archived: bool = False) -> Tuple[List[Dict[str, Any]], Optional[float]]:
     """
     Fetch tasks using cache with stale-while-revalidate pattern.
 
@@ -547,7 +552,7 @@ def _fetch_tasks_with_cache(fetch_limit: int, *, include_completed: bool = False
         fresh_tasks = tn.list_tasks(
             limit=fetch_limit,
             completed=include_completed if include_completed else False,
-            archived=False,
+            archived=include_archived if include_archived else False,
             sort="date_modified:desc",
         )
         tasks_raw = [tn.task_to_dict(t) for t in (fresh_tasks or [])]
@@ -565,10 +570,12 @@ def _fetch_tasks_with_cache(fetch_limit: int, *, include_completed: bool = False
 # -----------------------------
 # Task filtering and ranking
 # -----------------------------
-def _filter_and_rank_tasks(tasks: List[Dict[str, Any]], query: str, *, include_completed: bool = False) -> List[Dict[str, Any]]:
+def _filter_and_rank_tasks(tasks: List[Dict[str, Any]], query: str, *, include_completed: bool = False, include_archived: bool = False) -> List[Dict[str, Any]]:
     """Filter tasks by query tokens and rank by relevance."""
-    # Exclude completed/archived (unless explicitly including completed)
-    if include_completed:
+    # Exclude completed/archived (unless explicitly including them)
+    if include_archived:
+        visible = [t for t in tasks if not is_completed(t)]
+    elif include_completed:
         visible = [t for t in tasks if not is_archived(t)]
     else:
         visible = [t for t in tasks if not is_completed(t) and not is_archived(t)]
@@ -759,14 +766,15 @@ def _handle_search_mode(query: str) -> int:
             return 0
         # No matches - fall through to normal search (treats "!xyz" as a search term)
 
-    # Parse quick filter prefix (e.g., "!today", "!overdue", "!p1", "!complete")
+    # Parse quick filter prefix (e.g., "!today", "!overdue", "!p1", "!complete", "!archived")
     quick_filter, search_query = _parse_quick_filter(query)
 
-    # Determine if we need to include completed tasks
+    # Determine if we need to include completed or archived tasks
     include_completed = quick_filter == "complete"
+    include_archived = quick_filter == "archived"
 
     # Fetch tasks
-    tasks_raw, rerun = _fetch_tasks_with_cache(fetch_limit, include_completed=include_completed)
+    tasks_raw, rerun = _fetch_tasks_with_cache(fetch_limit, include_completed=include_completed, include_archived=include_archived)
 
     # Handle API down, no cache
     if not tasks_raw and rerun is None:
@@ -798,7 +806,7 @@ def _handle_search_mode(query: str) -> int:
     has_exact_title_match = bool(norm_q and norm_q in existing_titles)
 
     # Filter and rank using the remaining search query
-    visible_sorted = _filter_and_rank_tasks(filtered_tasks, search_query, include_completed=include_completed)
+    visible_sorted = _filter_and_rank_tasks(filtered_tasks, search_query, include_completed=include_completed, include_archived=include_archived)
 
     # Get active tracking session
     active = _get_active_session_cached()

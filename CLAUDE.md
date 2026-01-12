@@ -44,7 +44,7 @@ External Trigger (main) → Script Filter (for "Go Back")
    - Detects `>` prefix to switch between search and create modes
    - Fetches tasks from TaskNotes API with caching (TTL-based, stale-while-revalidate pattern)
    - Ranks/filters tasks locally with token-based matching
-   - Supports quick filters (!today, !tomorrow, !overdue, !complete, !p1, !p2, !p3)
+   - Supports quick filters (!today, !tomorrow, !overdue, !complete, !archived, !p1, !p2, !p3)
    - Outputs Alfred JSON with task items and modifiers
    - Pins actively tracked task to top when query is empty
 
