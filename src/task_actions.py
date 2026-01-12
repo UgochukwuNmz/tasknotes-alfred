@@ -140,23 +140,40 @@ def main() -> int:
     # Build action items
     items: List[Dict[str, Any]] = []
 
-    # Header showing task title
+    # Header showing task title - opens task in Obsidian
     workflow_icon = get_workflow_icon_path()
     header_item: Dict[str, Any] = {
         "title": task_title,
-        "subtitle": "Select an action below",
-        "valid": False,
+        "subtitle": "Open in Obsidian",
+        "arg": json.dumps({"action": "open", "path": task_path}, ensure_ascii=False),
+        "valid": True,
     }
     if workflow_icon:
         header_item["icon"] = {"path": workflow_icon}
     items.append(header_item)
 
-    # Open Task
+    # Time Tracking
+    if is_tracking:
+        items.append(_build_action_item(
+            "Stop Time Tracking",
+            "Stop the current tracking session",
+            {"action": "toggle_tracking", "path": task_path},
+            "⏹️", "action_stop_tracking",
+        ))
+    else:
+        items.append(_build_action_item(
+            "Start Time Tracking",
+            "Begin tracking time on this task",
+            {"action": "toggle_tracking", "path": task_path},
+            "⏱️", "action_start_tracking",
+        ))
+
+    # Schedule for Today
     items.append(_build_action_item(
-        "Open Task",
-        "Open in Obsidian",
-        {"action": "open", "path": task_path},
-        "📂", "action_open",
+        "Schedule for Today",
+        "Set scheduled date to today",
+        {"action": "schedule_today", "path": task_path},
+        "📅", "action_schedule_today",
     ))
 
     # Complete/Reopen Task
@@ -190,30 +207,6 @@ def main() -> int:
             {"action": "toggle_archive", "path": task_path},
             "📦", "action_archive",
         ))
-
-    # Time Tracking
-    if is_tracking:
-        items.append(_build_action_item(
-            "Stop Time Tracking",
-            "Stop the current tracking session",
-            {"action": "toggle_tracking", "path": task_path},
-            "⏹️", "action_stop_tracking",
-        ))
-    else:
-        items.append(_build_action_item(
-            "Start Time Tracking",
-            "Begin tracking time on this task",
-            {"action": "toggle_tracking", "path": task_path},
-            "⏱️", "action_start_tracking",
-        ))
-
-    # Schedule for Today
-    items.append(_build_action_item(
-        "Schedule for Today",
-        "Set scheduled date to today",
-        {"action": "schedule_today", "path": task_path},
-        "📅", "action_schedule_today",
-    ))
 
     # Delete Task
     items.append(_build_action_item(

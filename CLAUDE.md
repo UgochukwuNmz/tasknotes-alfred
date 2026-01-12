@@ -65,8 +65,8 @@ External Trigger (main) → Script Filter (for "Go Back")
 
 3. **`src/task_actions.py`** - Task Actions Menu
    - Displays action menu for a selected task
-   - Shows task title header with workflow icon
-   - Lists available actions: Open, Complete/Reopen, Archive/Unarchive, Time Tracking, Schedule Today, Delete, Go Back
+   - Task title header opens task in Obsidian
+   - Lists available actions: Time Tracking, Schedule Today, Complete/Reopen, Archive/Unarchive, Delete, Go Back
    - Fetches task details and tracking state from API
 
 4. **`src/nlp_task_create.py`** - Natural Language Date/Metadata Parser

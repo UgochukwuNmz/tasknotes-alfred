@@ -54,11 +54,11 @@ When you select a task and press Enter, a **Task Actions menu** appears with the
 
 | Action | Description |
 |--------|-------------|
-| Open Task | Open the task in Obsidian |
-| Complete Task / Reopen Task | Toggle task completion status |
-| Archive Task / Unarchive Task | Move to/from archive |
+| *[Task Title]* | Open the task in Obsidian |
 | Start/Stop Time Tracking | Toggle time tracking for this task |
 | Schedule for Today | Set the scheduled date to today |
+| Complete Task / Reopen Task | Toggle task completion status |
+| Archive Task / Unarchive Task | Move to/from archive |
 | Delete Task | Move task to trash |
 | Go Back | Return to the task list |
 
