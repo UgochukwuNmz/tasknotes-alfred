@@ -711,8 +711,8 @@ def _build_task_items(
                 "valid": True,
             },
             "alt": {
-                "subtitle": "⌥↩︎ Schedule for today",
-                "arg": json.dumps({"action": "schedule_today", "path": path}, ensure_ascii=False),
+                "subtitle": "⌥↩︎ Toggle schedule",
+                "arg": json.dumps({"action": "toggle_schedule", "path": path}, ensure_ascii=False),
                 "valid": True,
             },
             "ctrl": {

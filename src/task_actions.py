@@ -55,6 +55,32 @@ def _get_active_tracking_task_id() -> str:
     return ""
 
 
+def _search_task_by_title(title: str) -> Optional[Dict[str, Any]]:
+    """Search for a task by title (including archived tasks).
+
+    Used as fallback when primary path lookup fails (e.g., task was archived/moved).
+    """
+    if not title:
+        return None
+
+    base = get_tasknotes_api_base()
+    # Fetch tasks including archived to find moved tasks
+    payload = http_get_json(f"{base}/tasks?archived=true&limit=500", timeout=3.0)
+
+    if not isinstance(payload, dict):
+        return None
+
+    data = payload.get("data") or {}
+    tasks = data.get("tasks") or []
+
+    # Look for exact title match
+    for task in tasks:
+        if isinstance(task, dict) and task.get("title") == title:
+            return task
+
+    return None
+
+
 # -----------------------------
 # Alfred output
 # -----------------------------
@@ -124,6 +150,31 @@ def main() -> int:
     # Fetch task details
     task = _get_task_details(task_path)
 
+    # Fallback: if task not found at path, search by title
+    # This handles cases like archived tasks that moved to a different folder
+    if task is None:
+        title_from_path = _title_from_path(task_path)
+        found_task = _search_task_by_title(title_from_path)
+        if found_task and found_task.get("path"):
+            task = found_task
+            task_path = str(found_task.get("path"))  # Update to correct path
+        else:
+            # Task not found - show error with Go Back option
+            _alfred_output([
+                {
+                    "title": "Task not found",
+                    "subtitle": f"Could not find \"{title_from_path}\" - it may have been deleted",
+                    "valid": False,
+                },
+                _build_action_item(
+                    "Go Back",
+                    "Return to task list",
+                    {"action": "go_back"},
+                    "⬅️", "action_back",
+                ),
+            ])
+            return 0
+
     # Use API title if available, otherwise extract from path
     if task and task.get("title"):
         task_title = task.get("title")
@@ -132,6 +183,7 @@ def main() -> int:
 
     is_completed = _is_task_completed(task) if task else False
     is_archived = _is_task_archived(task) if task else False
+    has_scheduled = bool(str(task.get("scheduled", "") or "").strip()) if task else False
 
     # Check tracking state
     active_tracking_id = _get_active_tracking_task_id()
@@ -168,13 +220,21 @@ def main() -> int:
             "⏱️", "action_start_tracking",
         ))
 
-    # Schedule for Today
-    items.append(_build_action_item(
-        "Schedule for Today",
-        "Set scheduled date to today",
-        {"action": "schedule_today", "path": task_path},
-        "📅", "action_schedule_today",
-    ))
+    # Schedule for Today / Clear Schedule
+    if has_scheduled:
+        items.append(_build_action_item(
+            "Clear Schedule",
+            "Remove scheduled date",
+            {"action": "toggle_schedule", "path": task_path},
+            "🗓️", "action_clear_schedule",
+        ))
+    else:
+        items.append(_build_action_item(
+            "Schedule for Today",
+            "Set scheduled date to today",
+            {"action": "toggle_schedule", "path": task_path},
+            "📅", "action_schedule_today",
+        ))
 
     # Complete/Reopen Task
     if is_completed:

@@ -546,21 +546,39 @@ def main() -> None:
             notify("TaskNotes", f"Toggle failed: {str(e)}")
         return
 
-    if action == "schedule_today":
+    if action == "toggle_schedule":
         task_id = (data.get("path") or "").strip()
         if not task_id:
             return
 
-        today_str = date.today().isoformat()
-
         try:
             enc_id = urllib.parse.quote(task_id, safe="")
-            _with_tasknotes_ready(
-                lambda: _tasknotes_request_json("PUT", f"/tasks/{enc_id}", {"scheduled": today_str}, timeout=5.0),
+
+            # Fetch current task to check scheduled date
+            task_data = _with_tasknotes_ready(
+                lambda: _tasknotes_request_json("GET", f"/tasks/{enc_id}", None, timeout=5.0),
                 launch_mode="background",
-                purpose="schedule task",
+                purpose="fetch task",
             )
-            notify("Task scheduled", f"📅 Scheduled for today ({today_str})")
+            current_scheduled = str((task_data or {}).get("data", {}).get("scheduled", "") or "").strip()
+
+            if current_scheduled:
+                # Clear schedule
+                _with_tasknotes_ready(
+                    lambda: _tasknotes_request_json("PUT", f"/tasks/{enc_id}", {"scheduled": None}, timeout=5.0),
+                    launch_mode="background",
+                    purpose="clear schedule",
+                )
+                notify("Schedule cleared", "🗓️ Removed scheduled date")
+            else:
+                # Schedule for today
+                today_str = date.today().isoformat()
+                _with_tasknotes_ready(
+                    lambda: _tasknotes_request_json("PUT", f"/tasks/{enc_id}", {"scheduled": today_str}, timeout=5.0),
+                    launch_mode="background",
+                    purpose="schedule task",
+                )
+                notify("Task scheduled", f"📅 Scheduled for today ({today_str})")
         except APIError as e:
             notify("TaskNotes", f"Schedule failed: {str(e)}")
         return
