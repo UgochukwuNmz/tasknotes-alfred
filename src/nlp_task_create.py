@@ -517,7 +517,10 @@ def parse_create_input(raw: str, *, today: Optional[date] = None) -> ParsedCreat
     due: Optional[str] = None
     priority: Optional[str] = None
 
-    priority_map = {"p1": "High", "p2": "Medium", "p3": "Low"}
+    priority_map = {
+            "p1": "High", "p2": "Medium", "p3": "Low",
+            "!!!": "High", "!!": "Medium", "!": "Low",
+        }
 
     keep: List[str] = []
 

@@ -154,9 +154,9 @@ Create tasks with metadata using natural language. The parser understands:
 
 | Input | Priority |
 |-------|----------|
-| `p1`, `!`, `!!`, `!!!` | High |
-| `p2` | Medium |
-| `p3` | Low |
+| `p1`, `!!!` | High |
+| `p2`, `!!` | Medium |
+| `p3`, `!` | Low |
 
 ### Tags and Projects
 
