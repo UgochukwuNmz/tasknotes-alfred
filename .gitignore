@@ -11,6 +11,9 @@ build/
 # Claude Code local settings
 .claude/
 
+# API documentation (local reference only)
+TaskNotes API/
+
 # macOS
 .DS_Store
 .AppleDouble
