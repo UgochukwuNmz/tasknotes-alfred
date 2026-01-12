@@ -145,11 +145,19 @@ def main() -> int:
     task_path = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
 
     if not task_path:
-        _alfred_output([{
-            "title": "No task selected",
-            "subtitle": "Go back and select a task",
-            "valid": False,
-        }])
+        _alfred_output([
+            {
+                "title": "No task selected",
+                "subtitle": "Go back and select a task",
+                "valid": False,
+            },
+            _build_action_item(
+                "Go Back",
+                "Return to task list",
+                {"action": "go_back"},
+                "⬅️", "action_back",
+            ),
+        ])
         return 0
 
     # Fetch task details
