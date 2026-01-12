@@ -19,6 +19,7 @@ from utils import (
     is_archived as _is_task_archived,
     is_completed as _is_task_completed,
 )
+from tasknotes_alfred import list_tasks as tn_list_tasks
 
 
 # -----------------------------
@@ -59,24 +60,28 @@ def _search_task_by_title(title: str) -> Optional[Dict[str, Any]]:
     """Search for a task by title (including archived tasks).
 
     Used as fallback when primary path lookup fails (e.g., task was archived/moved).
+    Uses the same list_tasks() function that powers the !archived filter.
     """
     if not title:
         return None
 
-    base = get_tasknotes_api_base()
-    # Fetch tasks including archived to find moved tasks
-    payload = http_get_json(f"{base}/tasks?archived=true&limit=500", timeout=3.0)
+    try:
+        # Use same API call as !archived filter - this is proven to work
+        tasks = tn_list_tasks(limit=500, archived=True)
 
-    if not isinstance(payload, dict):
-        return None
-
-    data = payload.get("data") or {}
-    tasks = data.get("tasks") or []
-
-    # Look for exact title match
-    for task in tasks:
-        if isinstance(task, dict) and task.get("title") == title:
-            return task
+        for task in tasks:
+            if task.title == title:
+                return {
+                    "path": task.path,
+                    "title": task.title,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "scheduled": task.scheduled,
+                    "archived": task.archived,
+                    "completed": task.completed,
+                }
+    except Exception:
+        pass
 
     return None
 
