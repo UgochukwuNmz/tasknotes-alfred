@@ -44,6 +44,7 @@ from tasknotes_alfred import (
     pause_pomodoro as api_pause_pomodoro,
     resume_pomodoro as api_resume_pomodoro,
 )
+from utils import get_vault_identifier
 
 
 # -----------------------------
@@ -436,16 +437,13 @@ def main() -> None:
         notify("Task created", task.title or text)
 
         if details:
-            vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
-            vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
+            vault_id, vault_name, _ = get_vault_identifier()
             vault_root = _resolve_vault_root(vault_id=vault_id, vault_name=vault_name)
             if vault_root:
                 _write_details_to_note_body(vault_root, task.path, details)
 
         if data.get("open"):
-            vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
-            vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
-            vault_identifier = vault_id or vault_name
+            _, _, vault_identifier = get_vault_identifier()
             if not vault_identifier:
                 notify(
                     "TaskNotes",
@@ -486,9 +484,7 @@ def main() -> None:
             return
 
         if action == "toggle_tracking_open":
-            vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
-            vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
-            vault_identifier = vault_id or vault_name
+            _, _, vault_identifier = get_vault_identifier()
             if vault_identifier:
                 open_in_obsidian(vault_identifier, task_id)
 
@@ -496,9 +492,7 @@ def main() -> None:
 
     # Important: "open existing task" behavior remains unchanged.
     if action == "open":
-        vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
-        vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
-        vault_identifier = vault_id or vault_name
+        _, _, vault_identifier = get_vault_identifier()
         if not vault_identifier:
             notify(
                 "TaskNotes",
@@ -684,9 +678,7 @@ def main() -> None:
 
     if action == "open_pomodoro_view":
         # Open TaskNotes pomodoro timer view in Obsidian via Advanced URI
-        vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
-        vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
-        vault_identifier = vault_id or vault_name
+        _, _, vault_identifier = get_vault_identifier()
         if not vault_identifier:
             notify("TaskNotes", "Set OBSIDIAN_VAULT or OBSIDIAN_VAULT_ID to open pomodoro view.")
             return

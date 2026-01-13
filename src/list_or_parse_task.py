@@ -247,12 +247,9 @@ def _is_partial_filter(query: str) -> bool:
 
 def _apply_quick_filter(tasks: List[Dict[str, Any]], filter_type: str) -> List[Dict[str, Any]]:
     """Apply a quick filter to the task list."""
-    today_str = date.today().isoformat()
-    tomorrow_str = (date.today().replace(day=date.today().day + 1) if date.today().day < 28
-                    else date.today()).isoformat()
-
-    # Safer tomorrow calculation
     from datetime import timedelta
+
+    today_str = date.today().isoformat()
     tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
 
     filtered: List[Dict[str, Any]] = []
@@ -749,20 +746,26 @@ def _format_pomodoro_time(seconds: int) -> str:
     return f"{mins}:{secs:02d}"
 
 
-def _get_pomodoro_status_cached() -> Optional[Dict[str, Any]]:
-    """Get pomodoro status (cached)."""
+def _get_pomodoro_status_cached() -> Tuple[Optional[Dict[str, Any]], float]:
+    """Get pomodoro status (cached).
+
+    Returns:
+        Tuple of (status_dict or None, cache_age_seconds).
+        cache_age_seconds is 0.0 for fresh API data, > 0 for cached data.
+    """
     cache = PomodoroCache(ttl_seconds=POMODORO_CACHE_TTL_SECONDS, max_stale_seconds=3600)
 
-    # Check cache first
-    cached_status = cache.get_cached_status()
+    # Check cache first (returns status with age)
+    cached_status, cache_age = cache.get_cached_status_with_age()
     if cached_status is not None:
-        return cached_status
+        return cached_status, cache_age
 
     # Fetch fresh from API
     status = tn.get_pomodoro_status()
     if status is None:
         # API failed - return stale data if available (don't overwrite cache with None)
-        return cache.get_stale_status()
+        stale_status, stale_age = cache.get_stale_status_with_age()
+        return stale_status, stale_age
 
     status_dict = {
         "has_session": status.has_session,
@@ -776,7 +779,7 @@ def _get_pomodoro_status_cached() -> Optional[Dict[str, Any]]:
         "current_streak": status.current_streak,
     }
     cache.save_status(status_dict)
-    return status_dict
+    return status_dict, 0.0  # Fresh data, no cache age
 
 
 # -----------------------------
@@ -803,33 +806,25 @@ def _handle_pomodoro_mode(query: str) -> int:
     """Handle pomodoro mode (triggered by >> prefix)."""
     items: List[Dict[str, Any]] = []
 
-    # For >> mode, try to get fresh status from API (not stale fallback)
-    # If API fails, launch Obsidian
-    status = tn.get_pomodoro_status()
-    if status is None:
-        # API failed - launch Obsidian and show loading
-        _launch_obsidian_best_effort()
+    # Use cached pomodoro status (same as pinned pomodoro on main task list)
+    pomo_status, cache_age = _get_pomodoro_status_cached()
+
+    if pomo_status is None:
+        # No fresh or cached status - show offline message without auto-launching
         _alfred_output([
             _alfred_item(
-                "Opening Obsidian…",
-                "Waiting for TaskNotes API. Keep Alfred open.",
+                "Obsidian is not running",
+                "Open Obsidian to use pomodoro timer",
                 valid=False,
-            )
-        ], rerun=1.0)
+            ),
+            _alfred_item(
+                "Go Back",
+                "Return to task list",
+                arg=json.dumps({"action": "go_back"}, ensure_ascii=False),
+                valid=True,
+            ),
+        ])
         return 0
-
-    # Convert to dict format
-    pomo_status = {
-        "has_session": status.has_session,
-        "is_running": status.is_running,
-        "is_paused": status.is_paused,
-        "time_remaining": status.time_remaining,
-        "session_type": status.session_type,
-        "task_id": status.task_id,
-        "task_title": status.task_title,
-        "total_pomodoros": status.total_pomodoros,
-        "current_streak": status.current_streak,
-    }
 
     has_session = pomo_status.get("has_session", False)
     is_running = pomo_status.get("is_running", False)
@@ -837,6 +832,10 @@ def _handle_pomodoro_mode(query: str) -> int:
     time_remaining = pomo_status.get("time_remaining", 0)
     task_title = pomo_status.get("task_title") or ""
     task_id = pomo_status.get("task_id") or ""
+
+    # Adjust time_remaining for cache staleness (timer keeps running even when cached)
+    if not is_paused and cache_age > 0:
+        time_remaining = max(0, int(time_remaining - cache_age))
 
     # Get tomato icon path
     tomato_icon = get_emoji_icon_path("🍅", "pomodoro")
@@ -1078,13 +1077,16 @@ def _handle_search_mode(query: str) -> int:
     # Build pinned pomodoro status item (if session exists and no query)
     pomodoro_pinned_item: Optional[Dict[str, Any]] = None
     if not query:
-        pomo_status = _get_pomodoro_status_cached()
+        pomo_status, cache_age = _get_pomodoro_status_cached()
         if pomo_status and pomo_status.get("has_session"):
             time_remaining = pomo_status.get("time_remaining", 0)
             is_paused = pomo_status.get("is_paused", False)
-            is_running = pomo_status.get("is_running", False)
             task_title = pomo_status.get("task_title") or "Focus session"
             task_id = pomo_status.get("task_id") or ""
+
+            # Adjust time_remaining based on cache age (only when running, not paused)
+            if not is_paused and cache_age > 0:
+                time_remaining = max(0, int(time_remaining - cache_age))
 
             time_str = _format_pomodoro_time(time_remaining)
             pause_str = " (paused)" if is_paused else ""
@@ -1148,7 +1150,7 @@ def _handle_search_mode(query: str) -> int:
             # Empty state with no query - show help
             items.append(_alfred_item(
                 "No tasks yet",
-                "Type to search or create a new task • ⌥J for Quick Create",
+                "Type to search or use > prefix for Quick Create mode",
                 valid=False,
             ))
         elif quick_filter and not search_query:

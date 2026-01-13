@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
 from cache import TaskCache
@@ -181,8 +182,13 @@ def main() -> int:
         ])
         return 0
 
-    # Fetch task details
-    task = _get_task_details(task_path)
+    # Fetch task details and tracking state in parallel for better performance
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        task_future = executor.submit(_get_task_details, task_path)
+        tracking_future = executor.submit(_get_active_tracking_task_id)
+
+        task = task_future.result()
+        active_tracking_id = tracking_future.result()
 
     # Fallback: if task not found at path, search by title
     # This handles cases like archived tasks that moved to a different folder
@@ -224,8 +230,7 @@ def main() -> int:
     is_archived = _is_task_archived(task) if task else False
     has_scheduled = bool(str(task.get("scheduled", "") or "").strip()) if task else False
 
-    # Check tracking state
-    active_tracking_id = _get_active_tracking_task_id()
+    # Check tracking state (active_tracking_id was fetched in parallel above)
     is_tracking = active_tracking_id == task_path
 
     # Build action items

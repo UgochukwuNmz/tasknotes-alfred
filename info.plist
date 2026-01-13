@@ -376,7 +376,7 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 		<key>TASK_FETCH_LIMIT</key>
 		<string>400</string>
 		<key>TASK_RETURN_LIMIT</key>
-		<string>5</string>
+		<string>25</string>
 		<key>TASK_SUBTITLE_FIELDS</key>
 		<string>priority,status,due,scheduled,projects</string>
 		<key>TIME_ACTIVE_CACHE_TTL_SECONDS</key>

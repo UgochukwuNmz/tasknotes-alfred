@@ -49,6 +49,7 @@ External Trigger (main) → Script Filter (for "Go Back")
    - Outputs Alfred JSON with task items and modifiers
    - Pins actively tracked task to top when query is empty
    - Pins pomodoro status to top when a session is running (with stale fallback when offline)
+   - Uses `_get_pomodoro_status_cached()` helper for live timer display with cache age adjustment
 
 2. **`src/open_or_create_task.py`** - Action Handler
    - Receives JSON payload with `action` field:
@@ -57,7 +58,7 @@ External Trigger (main) → Script Filter (for "Go Back")
      - `toggle_tracking` / `toggle_tracking_open` - Start/stop time tracking
      - `stop_tracking` - Stop tracking
      - `toggle_complete` - Mark task done/reopen
-     - `schedule_today` - Set scheduled date to today
+     - `toggle_schedule` - Set scheduled date to today / clear schedule
      - `delete` - Move task to trash
      - `toggle_archive` - Archive/unarchive task
      - `go_back` - Trigger external trigger to return to task list
@@ -74,8 +75,8 @@ External Trigger (main) → Script Filter (for "Go Back")
 3. **`src/task_actions.py`** - Task Actions Menu
    - Displays action menu for a selected task
    - Task title header opens task in Obsidian
-   - Lists available actions: Time Tracking, Schedule Today, Complete/Reopen, Archive/Unarchive, Delete, Go Back
-   - Fetches task details and tracking state from API
+   - Lists available actions: Time Tracking, Schedule Today/Clear, Complete/Reopen, Archive/Unarchive, Delete, Go Back
+   - Fetches task details and tracking state from API in parallel for performance
 
 4. **`src/nlp_task_create.py`** - Natural Language Date/Metadata Parser
    - Parses quick-add strings into structured task metadata
@@ -91,8 +92,8 @@ External Trigger (main) → Script Filter (for "Go Back")
 
 6. **`src/cache.py`** - Cache Management
    - TaskCache: Main task list with TTL and stale-while-revalidate
-   - TimeSessionCache: Active time tracking session (available but not currently used)
-   - TaskDetailCache: Single task details for tracked task injection (available but not currently used)
+   - TimeSessionCache: Active time tracking session cache
+   - TaskDetailCache: Single task details for tracked task injection
    - PomodoroCache: Pomodoro status cache for pinned display (supports stale fallback when Obsidian is closed)
 
 7. **`src/utils.py`** - Shared Utilities
@@ -100,6 +101,8 @@ External Trigger (main) → Script Filter (for "Go Back")
    - `http_get_json()`: HTTP GET with TaskNotes authentication
    - `get_field()`, `is_completed()`, `is_archived()`: Task field accessors
    - `get_workflow_icon_path()`: Get path to workflow icon
+   - `get_vault_identifier()`: Get Obsidian vault identifiers from environment
+   - `Actions`: Class with action name constants (CREATE, OPEN, DELETE, etc.)
    - Configuration helpers: `get_tasknotes_api_base()`, `get_tasknotes_token()`
 
 ### Data Flow
@@ -120,7 +123,7 @@ Task items have two behaviors:
 - Modifier keys bypass the menu and execute actions directly:
   - `⌘↩` - Open in Obsidian
   - `⇧↩` - Toggle complete
-  - `⌥↩` - Schedule for today
+  - `⌥↩` - Toggle schedule (set today / clear)
   - `⌃↩` - Toggle time tracking
   - `⌥⌘↩` - Delete task
 
@@ -136,6 +139,9 @@ Pinned pomodoro status (when a pomodoro is running):
 - `⌥↩` - Pause/Resume pomodoro
 - `⌃↩` - Stop pomodoro
 
+Note: Pomodoro control items use UIDs for focus persistence during timer refresh.
+Alfred's frecency sorting may reorder items based on usage patterns.
+
 ## Configuration (Environment Variables)
 
 Set in Alfred workflow variables (info.plist):
@@ -149,6 +155,7 @@ Set in Alfred workflow variables (info.plist):
 | `TASK_FETCH_LIMIT` | Max tasks to fetch from API (400) |
 | `TASK_RETURN_LIMIT` | Max items shown in Alfred (50) |
 | `TASK_CACHE_TTL_SECONDS` | Cache freshness (5) |
+| `POMODORO_CACHE_TTL_SECONDS` | Pomodoro status cache TTL (1) |
 
 ## Testing
 

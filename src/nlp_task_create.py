@@ -180,7 +180,7 @@ def _iso(d: date) -> str:
 def _safe_date(y: int, m: int, d: int) -> Optional[date]:
     try:
         return date(y, m, d)
-    except Exception:
+    except ValueError:
         return None
 
 
@@ -235,7 +235,7 @@ def _parse_int_or_wordnum(tok: str) -> Optional[int]:
     if t.isdigit():
         try:
             return int(t)
-        except Exception:
+        except ValueError:
             return None
     return _WORD_NUMS.get(t)
 

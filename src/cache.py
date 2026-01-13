@@ -12,7 +12,7 @@ import json
 import os
 import tempfile
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 # -----------------------------
@@ -44,11 +44,22 @@ def read_json_file(path: str) -> Optional[Dict[str, Any]]:
 
 
 def write_json_file(path: str, data: Dict[str, Any]) -> None:
-    """Atomically write data to a JSON file using temp file + rename."""
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
+    """Atomically write data to a JSON file using unique temp file + rename.
+
+    Uses NamedTemporaryFile with unique name to prevent race conditions
+    when multiple Alfred invocations write simultaneously.
+    """
+    dir_path = os.path.dirname(path) or "."
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=dir_path,
+        delete=False,
+        suffix=".tmp"
+    ) as f:
         json.dump(data, f, ensure_ascii=False)
-    os.replace(tmp, path)
+        tmp_path = f.name
+    os.replace(tmp_path, path)
 
 
 # -----------------------------
@@ -302,6 +313,45 @@ class PomodoroCache:
             return status if isinstance(status, dict) else None
 
         return None
+
+    def get_cached_status_with_age(self) -> Tuple[Optional[Dict[str, Any]], float]:
+        """
+        Return cached pomodoro status with cache age in seconds.
+
+        Returns:
+            Tuple of (status_dict or None, age_seconds)
+            age_seconds is 0.0 if no valid cache exists
+        """
+        now = time.time()
+        cached = read_json_file(self._cache_path) or {}
+        ts = cached.get("timestamp")
+
+        if isinstance(ts, (int, float)):
+            age = now - float(ts)
+            if age <= max(0, self.ttl_seconds):
+                status = cached.get("status")
+                if isinstance(status, dict):
+                    return status, age
+        return None, 0.0
+
+    def get_stale_status_with_age(self) -> Tuple[Optional[Dict[str, Any]], float]:
+        """
+        Return cached status even if stale (up to max_stale_seconds), with cache age.
+
+        Returns:
+            Tuple of (status_dict or None, age_seconds)
+        """
+        now = time.time()
+        cached = read_json_file(self._cache_path) or {}
+        ts = cached.get("timestamp")
+
+        if isinstance(ts, (int, float)):
+            age = now - float(ts)
+            if age <= self.max_stale_seconds:
+                status = cached.get("status")
+                if isinstance(status, dict):
+                    return status, age
+        return None, 0.0
 
     def get_stale_status(self) -> Optional[Dict[str, Any]]:
         """Return cached status even if stale (up to max_stale_seconds)."""

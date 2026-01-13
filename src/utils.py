@@ -11,7 +11,7 @@ Provides common functionality used across multiple modules:
 import json
 import os
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 # -----------------------------
@@ -30,6 +30,26 @@ PRIORITY_MAP = {
 # Status values that indicate completion
 COMPLETED_STATUSES = {"done", "completed", "complete"}
 ARCHIVED_STATUSES = {"archived"}
+
+
+# Action names used in JSON payloads (prevents typo bugs)
+class Actions:
+    CREATE = "create"
+    OPEN = "open"
+    DELETE = "delete"
+    TOGGLE_COMPLETE = "toggle_complete"
+    TOGGLE_SCHEDULE = "toggle_schedule"
+    TOGGLE_TRACKING = "toggle_tracking"
+    TOGGLE_TRACKING_OPEN = "toggle_tracking_open"
+    STOP_TRACKING = "stop_tracking"
+    TOGGLE_ARCHIVE = "toggle_archive"
+    GO_BACK = "go_back"
+    START_POMODORO = "start_pomodoro"
+    STOP_POMODORO = "stop_pomodoro"
+    PAUSE_POMODORO = "pause_pomodoro"
+    RESUME_POMODORO = "resume_pomodoro"
+    OPEN_POMODORO_CONTROLS = "open_pomodoro_controls"
+    OPEN_POMODORO_VIEW = "open_pomodoro_view"
 
 
 # -----------------------------
@@ -139,3 +159,21 @@ def get_workflow_icon_path() -> str:
         if os.path.exists(icon_path):
             return icon_path
     return ""
+
+
+# -----------------------------
+# Vault identifier helper
+# -----------------------------
+def get_vault_identifier() -> Tuple[str, str, str]:
+    """Get Obsidian vault identifiers from environment.
+
+    Returns:
+        Tuple of (vault_id, vault_name, vault_identifier) where:
+        - vault_id: OBSIDIAN_VAULT_ID (stable, preferred)
+        - vault_name: OBSIDIAN_VAULT (human-readable name)
+        - vault_identifier: vault_id if set, otherwise vault_name
+    """
+    vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
+    vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
+    vault_identifier = vault_id or vault_name
+    return vault_id, vault_name, vault_identifier

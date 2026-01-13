@@ -72,7 +72,7 @@ For faster access, use modifier keys with Enter to bypass the action menu:
 | `↩` | Open Task Actions menu |
 | `⌘↩` | Open task in Obsidian |
 | `⇧↩` | Toggle complete (mark done/reopen) |
-| `⌥↩` | Schedule task for today |
+| `⌥↩` | Toggle schedule (set today / clear) |
 | `⌃↩` | Toggle time tracking |
 | `⌥⌘↩` | Delete task (move to trash) |
 
@@ -251,7 +251,7 @@ TaskNotes enforces a single active time tracking session. When you start trackin
 
 1. Any currently tracked task is automatically stopped
 2. The new task begins tracking
-3. The tracked task appears at the top of your list with a ⏱ icon
+3. The tracked task appears at the top of your list with a ⏳ icon
 
 Toggle tracking with `⌃↩` - if the task is already being tracked, it stops; otherwise, it starts.
 
@@ -279,6 +279,8 @@ When a pomodoro is running:
 - **Stop** - End the session early
 - **Go Back** - Return to the task list
 
+**Note:** Alfred may reorder pomodoro controls based on your usage patterns (frecency). This is a trade-off to maintain focus/selection during the live timer refresh.
+
 ### Pinned Status
 
 When a pomodoro is running, a status item appears at the top of your task list:
@@ -296,7 +298,7 @@ Press Enter on this item to open pomodoro controls, or use modifier keys for qui
 | `⌥↩` | Pause/Resume pomodoro |
 | `⌃↩` | Stop pomodoro |
 
-**Offline behavior**: When Obsidian is closed, the pinned pomodoro status shows the last known state from cache (up to 1 hour old). The timer won't update, but you can see your previous session status.
+**Offline behavior**: When Obsidian is closed, the pomodoro status shows the last known state from cache (up to 1 hour old). The timer continues to count down based on elapsed time since the cache was saved.
 
 ## Subtitle Display
 
