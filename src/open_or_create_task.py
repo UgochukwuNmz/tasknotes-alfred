@@ -34,7 +34,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
-from tasknotes_alfred import APIError, TASKNOTES_API_BASE, TASKNOTES_TOKEN, create_task
+from tasknotes_alfred import (
+    APIError,
+    TASKNOTES_API_BASE,
+    TASKNOTES_TOKEN,
+    create_task,
+    start_pomodoro as api_start_pomodoro,
+    stop_pomodoro as api_stop_pomodoro,
+    pause_pomodoro as api_pause_pomodoro,
+    resume_pomodoro as api_resume_pomodoro,
+)
 
 
 # -----------------------------
@@ -611,6 +620,83 @@ def main() -> None:
         bundle_id = os.environ.get("alfred_workflow_bundleid", "com.emmanuelihim.tasknotes")
         script = f'tell application id "com.runningwithcrayons.Alfred" to run trigger "main" in workflow "{bundle_id}"'
         subprocess.run(["osascript", "-e", script], check=False)
+        return
+
+    # Pomodoro actions
+    if action == "start_pomodoro":
+        task_id = (data.get("path") or "").strip() or None
+        try:
+            _with_tasknotes_ready(
+                lambda: api_start_pomodoro(task_id),
+                launch_mode="background",
+                purpose="start pomodoro",
+            )
+            if task_id:
+                notify("Pomodoro started", "25-minute focus session started")
+            else:
+                notify("Pomodoro started", "Focus session started (no task)")
+        except APIError as e:
+            notify("TaskNotes", f"Pomodoro failed: {str(e)}")
+        return
+
+    if action == "stop_pomodoro":
+        try:
+            _with_tasknotes_ready(
+                lambda: api_stop_pomodoro(),
+                launch_mode="background",
+                purpose="stop pomodoro",
+            )
+            notify("Pomodoro stopped", "Session ended early")
+        except APIError as e:
+            notify("TaskNotes", f"Pomodoro failed: {str(e)}")
+        return
+
+    if action == "pause_pomodoro":
+        try:
+            _with_tasknotes_ready(
+                lambda: api_pause_pomodoro(),
+                launch_mode="background",
+                purpose="pause pomodoro",
+            )
+            notify("Pomodoro paused", "Timer paused")
+        except APIError as e:
+            notify("TaskNotes", f"Pomodoro failed: {str(e)}")
+        return
+
+    if action == "resume_pomodoro":
+        try:
+            _with_tasknotes_ready(
+                lambda: api_resume_pomodoro(),
+                launch_mode="background",
+                purpose="resume pomodoro",
+            )
+            notify("Pomodoro resumed", "Timer resumed")
+        except APIError as e:
+            notify("TaskNotes", f"Pomodoro failed: {str(e)}")
+        return
+
+    if action == "open_pomodoro_controls":
+        # Trigger external trigger with >> query to open pomodoro mode
+        bundle_id = os.environ.get("alfred_workflow_bundleid", "com.emmanuelihim.tasknotes")
+        script = f'tell application id "com.runningwithcrayons.Alfred" to run trigger "main" in workflow "{bundle_id}" with argument ">>"'
+        subprocess.run(["osascript", "-e", script], check=False)
+        return
+
+    if action == "open_pomodoro_view":
+        # Open TaskNotes pomodoro timer view in Obsidian via Advanced URI
+        vault_id = (os.environ.get("OBSIDIAN_VAULT_ID") or "").strip()
+        vault_name = (os.environ.get("OBSIDIAN_VAULT") or "").strip()
+        vault_identifier = vault_id or vault_name
+        if not vault_identifier:
+            notify("TaskNotes", "Set OBSIDIAN_VAULT or OBSIDIAN_VAULT_ID to open pomodoro view.")
+            return
+
+        url = (
+            "obsidian://advanced-uri"
+            f"?vault={quote(vault_identifier, safe='')}"
+            "&commandid=tasknotes%3Aopen-pomodoro-view"
+        )
+        subprocess.run(["open", url], check=False)
         return
 
 

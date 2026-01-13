@@ -32,19 +32,6 @@
 				<false/>
 			</dict>
 		</array>
-		<key>CEA2BA9B-830D-4B53-9E04-395E27AB501A</key>
-		<array>
-			<dict>
-				<key>destinationuid</key>
-				<string>A9C772AE-E56A-4373-96A2-38686F1344C5</string>
-				<key>modifiers</key>
-				<integer>0</integer>
-				<key>modifiersubtext</key>
-				<string></string>
-				<key>vitoclose</key>
-				<false/>
-			</dict>
-		</array>
 		<key>D8F3A2B1-4C5E-6D7F-8A9B-0C1D2E3F4A5B</key>
 		<array>
 			<dict>
@@ -119,11 +106,11 @@
 				<key>focusedappvariablename</key>
 				<string></string>
 				<key>hotkey</key>
-				<integer>38</integer>
+				<integer>-1</integer>
 				<key>hotmod</key>
-				<integer>524288</integer>
+				<integer>1048576</integer>
 				<key>hotstring</key>
-				<string>J</string>
+				<string>double tap</string>
 				<key>leftcursor</key>
 				<false/>
 				<key>modsmode</key>
@@ -180,6 +167,8 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 				<integer>1</integer>
 				<key>escaping</key>
 				<integer>102</integer>
+				<key>keyword</key>
+				<string>tn</string>
 				<key>queuedelaycustom</key>
 				<integer>3</integer>
 				<key>queuedelayimmediatelyinitially</key>
@@ -216,27 +205,6 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 			<string>A9C772AE-E56A-4373-96A2-38686F1344C5</string>
 			<key>version</key>
 			<integer>3</integer>
-		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>argumenttype</key>
-				<integer>1</integer>
-				<key>keyword</key>
-				<string>tn</string>
-				<key>subtext</key>
-				<string>Search tasks or type &gt; to create</string>
-				<key>text</key>
-				<string>TaskNotes</string>
-				<key>withspace</key>
-				<true/>
-			</dict>
-			<key>type</key>
-			<string>alfred.workflow.input.keyword</string>
-			<key>uid</key>
-			<string>CEA2BA9B-830D-4B53-9E04-395E27AB501A</string>
-			<key>version</key>
-			<integer>1</integer>
 		</dict>
 		<dict>
 			<key>config</key>
@@ -345,51 +313,44 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 		<key>A9C772AE-E56A-4373-96A2-38686F1344C5</key>
 		<dict>
 			<key>xpos</key>
-			<real>510</real>
+			<real>370</real>
 			<key>ypos</key>
-			<real>345</real>
+			<real>340</real>
 		</dict>
 		<key>B92FA369-00F1-4B1B-BB4A-D00580677993</key>
 		<dict>
 			<key>xpos</key>
-			<real>265</real>
+			<real>115</real>
 			<key>ypos</key>
-			<real>200</real>
-		</dict>
-		<key>CEA2BA9B-830D-4B53-9E04-395E27AB501A</key>
-		<dict>
-			<key>xpos</key>
-			<real>265</real>
-			<key>ypos</key>
-			<real>345</real>
+			<real>260</real>
 		</dict>
 		<key>D8F3A2B1-4C5E-6D7F-8A9B-0C1D2E3F4A5B</key>
 		<dict>
 			<key>xpos</key>
-			<real>715</real>
+			<real>575</real>
 			<key>ypos</key>
-			<real>345</real>
+			<real>340</real>
 		</dict>
 		<key>E9A8B7C6-D5E4-F3A2-B1C0-D9E8F7A6B5C4</key>
 		<dict>
 			<key>xpos</key>
-			<real>920</real>
+			<real>780</real>
 			<key>ypos</key>
-			<real>420</real>
+			<real>415</real>
 		</dict>
 		<key>F1A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C6</key>
 		<dict>
 			<key>xpos</key>
-			<real>265</real>
+			<real>115</real>
 			<key>ypos</key>
-			<real>500</real>
+			<real>425</real>
 		</dict>
 		<key>FA942060-859A-4C3A-97D0-08FDF86539C4</key>
 		<dict>
 			<key>xpos</key>
-			<real>1125</real>
+			<real>985</real>
 			<key>ypos</key>
-			<real>345</real>
+			<real>340</real>
 		</dict>
 	</dict>
 	<key>userconfigurationconfig</key>
@@ -415,7 +376,7 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 		<key>TASK_FETCH_LIMIT</key>
 		<string>400</string>
 		<key>TASK_RETURN_LIMIT</key>
-		<string>50</string>
+		<string>5</string>
 		<key>TASK_SUBTITLE_FIELDS</key>
 		<string>priority,status,due,scheduled,projects</string>
 		<key>TIME_ACTIVE_CACHE_TTL_SECONDS</key>
@@ -423,8 +384,6 @@ WF_DIR="${alfred_preferences}/workflows/${alfred_workflow_uid}"
 		<key>TRACKING_BANNER_SHOW_WHEN_EMPTY</key>
 		<string>0</string>
 	</dict>
-	<key>variablesdontexport</key>
-	<array/>
 	<key>version</key>
 	<string>1.2</string>
 	<key>webaddress</key>

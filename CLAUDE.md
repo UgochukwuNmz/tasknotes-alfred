@@ -17,6 +17,7 @@ TaskNotes is an Alfred workflow for macOS that integrates with the TaskNotes plu
 The workflow uses a prefix-based mode system:
 - Normal query → Search mode (shows matching tasks)
 - Query starting with `>` → Create mode (create-focused UI with NLP parsing)
+- Query starting with `>>` → Pomodoro mode (start/control pomodoro timer)
 
 ### Alfred Workflow Structure
 
@@ -47,6 +48,7 @@ External Trigger (main) → Script Filter (for "Go Back")
    - Supports quick filters (!today, !tomorrow, !overdue, !complete, !archived, !p1, !p2, !p3)
    - Outputs Alfred JSON with task items and modifiers
    - Pins actively tracked task to top when query is empty
+   - Pins pomodoro status to top when a session is running (with stale fallback when offline)
 
 2. **`src/open_or_create_task.py`** - Action Handler
    - Receives JSON payload with `action` field:
@@ -59,6 +61,12 @@ External Trigger (main) → Script Filter (for "Go Back")
      - `delete` - Move task to trash
      - `toggle_archive` - Archive/unarchive task
      - `go_back` - Trigger external trigger to return to task list
+     - `start_pomodoro` - Start pomodoro session (optionally with task)
+     - `stop_pomodoro` - Stop pomodoro session
+     - `pause_pomodoro` - Pause pomodoro timer
+     - `resume_pomodoro` - Resume paused pomodoro
+     - `open_pomodoro_controls` - Open pomodoro mode (>>)
+     - `open_pomodoro_view` - Open TaskNotes pomodoro timer view in Obsidian (via Advanced URI)
    - Creates tasks via TaskNotes API, opens tasks in Obsidian via URI scheme
    - Manages single-active-session time tracking
    - Auto-launches Obsidian if API unreachable (background for notify, foreground for open)
@@ -78,12 +86,14 @@ External Trigger (main) → Script Filter (for "Go Back")
 5. **`src/tasknotes_alfred.py`** - TaskNotes API Client
    - HTTP helpers for TaskNotes REST API (GET/POST with Bearer token auth)
    - Task model normalization (dataclass `Task`)
+   - Pomodoro API helpers (`get_pomodoro_status`, `start_pomodoro`, `stop_pomodoro`, `pause_pomodoro`, `resume_pomodoro`)
    - Graceful fallback for older API versions
 
 6. **`src/cache.py`** - Cache Management
    - TaskCache: Main task list with TTL and stale-while-revalidate
    - TimeSessionCache: Active time tracking session (available but not currently used)
    - TaskDetailCache: Single task details for tracked task injection (available but not currently used)
+   - PomodoroCache: Pomodoro status cache for pinned display (supports stale fallback when Obsidian is closed)
 
 7. **`src/utils.py`** - Shared Utilities
    - `get_emoji_icon_path()`: Look up bundled PNG icons for Alfred items
@@ -119,6 +129,12 @@ Create items support:
 - `⌘↩` - Create + open
 - `⇧↩` - Create verbatim
 - `⇧⌘↩` - Create verbatim + open
+
+Pinned pomodoro status (when a pomodoro is running):
+- `↩` - Open pomodoro controls (`>>` mode)
+- `⌘↩` - Open task in Obsidian (if linked) or pomodoro timer view
+- `⌥↩` - Pause/Resume pomodoro
+- `⌃↩` - Stop pomodoro
 
 ## Configuration (Environment Variables)
 
@@ -159,6 +175,11 @@ The workflow interacts with TaskNotes HTTP API endpoints:
 - `GET /api/time/active` - Get active tracking sessions
 - `POST /api/tasks/{id}/time/start` - Start tracking
 - `POST /api/tasks/{id}/time/stop` - Stop tracking
+- `GET /api/pomodoro/status` - Get pomodoro status (isRunning, timeRemaining, isPaused, etc.)
+- `POST /api/pomodoro/start` - Start pomodoro (optional taskId in body)
+- `POST /api/pomodoro/stop` - Stop pomodoro
+- `POST /api/pomodoro/pause` - Pause pomodoro
+- `POST /api/pomodoro/resume` - Resume paused pomodoro
 - `GET /api/health` - Health check
 
 See `TaskNotes API/TaskNotes HTTP API.md` for full API documentation.

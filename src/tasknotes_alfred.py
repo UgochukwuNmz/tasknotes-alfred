@@ -315,6 +315,83 @@ def create_task(
 
 
 # -----------------------------
+# Pomodoro API
+# -----------------------------
+
+@dataclass
+class PomodoroStatus:
+    has_session: bool  # True if currentSession exists (active or paused)
+    is_running: bool   # True if timer is actively counting
+    is_paused: bool
+    time_remaining: int  # seconds
+    session_type: str  # "work" or "break"
+    task_id: Optional[str]
+    task_title: Optional[str]
+    total_pomodoros: int
+    current_streak: int
+
+
+def get_pomodoro_status() -> Optional[PomodoroStatus]:
+    """Get current pomodoro status from TaskNotes API."""
+    try:
+        payload = _request_json("GET", "/pomodoro/status")
+    except APIError:
+        return None
+
+    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+    if not isinstance(data, dict):
+        return None
+
+    is_running = bool(data.get("isRunning", False))
+    time_remaining = int(data.get("timeRemaining", 0) or 0)
+    total_pomodoros = int(data.get("totalPomodoros", 0) or 0)
+    current_streak = int(data.get("currentStreak", 0) or 0)
+
+    session = data.get("currentSession") or {}
+    has_session = bool(session)  # True if session exists (even if paused)
+    # Infer paused state: session exists but timer not running
+    is_paused = has_session and not is_running
+    session_type = str(session.get("type", "work") or "work")
+    task_id = session.get("taskId") or None
+    task_title = session.get("taskTitle") or None
+
+    return PomodoroStatus(
+        has_session=has_session,
+        is_running=is_running,
+        is_paused=is_paused,
+        time_remaining=time_remaining,
+        session_type=session_type,
+        task_id=task_id,
+        task_title=task_title,
+        total_pomodoros=total_pomodoros,
+        current_streak=current_streak,
+    )
+
+
+def start_pomodoro(task_id: Optional[str] = None) -> Dict[str, Any]:
+    """Start a pomodoro session, optionally with a task."""
+    body: Optional[Dict[str, Any]] = None
+    if task_id:
+        body = {"taskId": task_id}
+    return _request_json("POST", "/pomodoro/start", body=body)
+
+
+def stop_pomodoro() -> Dict[str, Any]:
+    """Stop the current pomodoro session."""
+    return _request_json("POST", "/pomodoro/stop")
+
+
+def pause_pomodoro() -> Dict[str, Any]:
+    """Pause the current pomodoro session."""
+    return _request_json("POST", "/pomodoro/pause")
+
+
+def resume_pomodoro() -> Dict[str, Any]:
+    """Resume a paused pomodoro session."""
+    return _request_json("POST", "/pomodoro/resume")
+
+
+# -----------------------------
 # Alfred Output helper (optional)
 # -----------------------------
 

@@ -39,14 +39,15 @@ A powerful Alfred workflow for managing tasks in [TaskNotes](https://tasknotes.d
 
 ### Modes
 
-TaskNotes has two modes, controlled by the `>` prefix:
+TaskNotes has three modes, controlled by prefixes:
 
 | You type | Mode | Behavior |
 |----------|------|----------|
 | `meeting` | Search | Shows matching tasks, create option at bottom |
 | `>meeting tomorrow p1` | Create | Create-focused mode with NLP parsing |
+| `>>` or `>>meeting` | Pomodoro | Start/control pomodoro timer sessions |
 
-To switch from create to search, just delete the `>` prefix.
+To switch modes, just change the prefix (or delete it to search).
 
 ### Task Actions
 
@@ -253,6 +254,49 @@ TaskNotes enforces a single active time tracking session. When you start trackin
 3. The tracked task appears at the top of your list with a ⏱ icon
 
 Toggle tracking with `⌃↩` - if the task is already being tracked, it stops; otherwise, it starts.
+
+## Pomodoro Timer
+
+Start focused work sessions with the built-in pomodoro timer.
+
+### Accessing Pomodoro Mode
+
+Type `>>` in the workflow to enter pomodoro mode:
+
+| You type | Result |
+|----------|--------|
+| `>>` | Show pomodoro controls (start/pause/resume/stop) |
+| `>>meeting` | Search tasks to start a pomodoro with |
+
+### Pomodoro Controls
+
+When no pomodoro is running:
+- **Start Pomodoro** - Begin a 25-minute focus session without a task
+- **Start with a task** - Search and select a task to focus on
+
+When a pomodoro is running:
+- **Pause/Resume** - Pause or resume the timer
+- **Stop** - End the session early
+- **Go Back** - Return to the task list
+
+### Pinned Status
+
+When a pomodoro is running, a status item appears at the top of your task list:
+```
+🍅 18:42 • API Integration
+Pomodoro in progress • ↩ to manage
+```
+
+Press Enter on this item to open pomodoro controls, or use modifier keys for quick actions:
+
+| Shortcut | Action |
+|----------|--------|
+| `↩` | Open pomodoro controls (`>>` mode) |
+| `⌘↩` | Open task in Obsidian (if linked) or pomodoro timer view |
+| `⌥↩` | Pause/Resume pomodoro |
+| `⌃↩` | Stop pomodoro |
+
+**Offline behavior**: When Obsidian is closed, the pinned pomodoro status shows the last known state from cache (up to 1 hour old). The timer won't update, but you can see your previous session status.
 
 ## Subtitle Display
 

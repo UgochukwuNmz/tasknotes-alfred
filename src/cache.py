@@ -259,3 +259,65 @@ class TaskDetailCache:
             self._cache_path,
             {"timestamp": time.time(), "id": task_id, "task": task},
         )
+
+
+# -----------------------------
+# Pomodoro status cache
+# -----------------------------
+def get_pomodoro_cache_path() -> str:
+    """Return path to the pomodoro status cache."""
+    return os.path.join(get_cache_dir(), "pomodoro_status_cache.json")
+
+
+class PomodoroCache:
+    """Manages the pomodoro status cache."""
+
+    def __init__(self, ttl_seconds: int = 1, max_stale_seconds: int = 3600):
+        self.ttl_seconds = ttl_seconds
+        self.max_stale_seconds = max_stale_seconds
+        self._cache_path = get_pomodoro_cache_path()
+
+    def get_cached_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Return cached pomodoro status if still valid, else None.
+
+        Cached status shape:
+        {
+            "is_running": bool,
+            "is_paused": bool,
+            "time_remaining": int,  # seconds
+            "session_type": str,    # "work" or "break"
+            "task_id": Optional[str],
+            "task_title": Optional[str],
+            "total_pomodoros": int,
+            "current_streak": int,
+        }
+        """
+        now = time.time()
+        cached = read_json_file(self._cache_path) or {}
+        ts = cached.get("timestamp")
+
+        if isinstance(ts, (int, float)) and (now - float(ts)) <= max(0, self.ttl_seconds):
+            status = cached.get("status")
+            return status if isinstance(status, dict) else None
+
+        return None
+
+    def get_stale_status(self) -> Optional[Dict[str, Any]]:
+        """Return cached status even if stale (up to max_stale_seconds)."""
+        now = time.time()
+        cached = read_json_file(self._cache_path) or {}
+        ts = cached.get("timestamp")
+
+        if isinstance(ts, (int, float)) and (now - float(ts)) <= self.max_stale_seconds:
+            status = cached.get("status")
+            return status if isinstance(status, dict) else None
+
+        return None
+
+    def save_status(self, status: Optional[Dict[str, Any]]) -> None:
+        """Save the pomodoro status to cache."""
+        write_json_file(
+            self._cache_path,
+            {"timestamp": time.time(), "status": status},
+        )

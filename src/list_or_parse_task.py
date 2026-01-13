@@ -17,7 +17,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
 import tasknotes_alfred as tn
-from cache import TaskCache, TimeSessionCache, TaskDetailCache
+from cache import TaskCache, TimeSessionCache, TaskDetailCache, PomodoroCache
 from nlp_task_create import build_preview, parse_create_input
 from utils import (
     get_emoji_icon_path,
@@ -47,6 +47,7 @@ TASK_CACHE_REFRESH_BACKOFF_SECONDS = int(os.environ.get("TASK_CACHE_REFRESH_BACK
 # Time tracking cache
 TIME_ACTIVE_CACHE_TTL_SECONDS = int(os.environ.get("TIME_ACTIVE_CACHE_TTL_SECONDS", "1"))
 TASK_DETAIL_CACHE_TTL_SECONDS = int(os.environ.get("TASK_DETAIL_CACHE_TTL_SECONDS", "2"))
+POMODORO_CACHE_TTL_SECONDS = int(os.environ.get("POMODORO_CACHE_TTL_SECONDS", "1"))
 
 # Weekday names for relative date display
 _WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -684,7 +685,7 @@ def _build_task_items(
 
         is_tracked = bool(active_id) and (path == active_id)
         if is_tracked:
-            title = f"⏱ {title}"
+            title = f"⏳ {title}"
             elapsed_txt = f"{active_elapsed}m" if isinstance(active_elapsed, int) else "active"
             subtitle = (f"Tracking: {elapsed_txt}" + (" • " + subtitle if subtitle else "")).strip()
 
@@ -695,6 +696,13 @@ def _build_task_items(
             valid=True,
             arg=path,  # Pass path to Task Actions Script Filter
         )
+        item["uid"] = path  # Stable UID to maintain selection across refreshes
+
+        # Add icon for tracked task
+        if is_tracked:
+            tracking_icon = get_emoji_icon_path("⏳", "tracking")
+            if tracking_icon:
+                item["icon"] = {"path": tracking_icon}
 
         # Modifier shortcuts bypass the action menu and execute directly
         ctrl_sub = "⌃↩︎ Stop tracking" if is_tracked else "⌃↩︎ Start tracking"
@@ -722,7 +730,7 @@ def _build_task_items(
             },
             "cmd+alt": {
                 "subtitle": "⌥⌘↩︎ Delete task",
-                "arg": json.dumps({"action": "delete", "path": path, "title": title.lstrip("⏱ ").strip()}, ensure_ascii=False),
+                "arg": json.dumps({"action": "delete", "path": path, "title": title.lstrip("⏳ ").strip()}, ensure_ascii=False),
                 "valid": True,
             },
         }
@@ -730,6 +738,45 @@ def _build_task_items(
         items.append(item)
 
     return items
+
+
+# -----------------------------
+# Pomodoro helpers
+# -----------------------------
+def _format_pomodoro_time(seconds: int) -> str:
+    """Format seconds as MM:SS."""
+    mins, secs = divmod(max(0, seconds), 60)
+    return f"{mins}:{secs:02d}"
+
+
+def _get_pomodoro_status_cached() -> Optional[Dict[str, Any]]:
+    """Get pomodoro status (cached)."""
+    cache = PomodoroCache(ttl_seconds=POMODORO_CACHE_TTL_SECONDS, max_stale_seconds=3600)
+
+    # Check cache first
+    cached_status = cache.get_cached_status()
+    if cached_status is not None:
+        return cached_status
+
+    # Fetch fresh from API
+    status = tn.get_pomodoro_status()
+    if status is None:
+        # API failed - return stale data if available (don't overwrite cache with None)
+        return cache.get_stale_status()
+
+    status_dict = {
+        "has_session": status.has_session,
+        "is_running": status.is_running,
+        "is_paused": status.is_paused,
+        "time_remaining": status.time_remaining,
+        "session_type": status.session_type,
+        "task_id": status.task_id,
+        "task_title": status.task_title,
+        "total_pomodoros": status.total_pomodoros,
+        "current_streak": status.current_streak,
+    }
+    cache.save_status(status_dict)
+    return status_dict
 
 
 # -----------------------------
@@ -749,6 +796,195 @@ def _handle_create_only_mode(query: str) -> int:
 
     create_item = _build_create_item(query, include_alt_switch=False)
     _alfred_output([create_item])
+    return 0
+
+
+def _handle_pomodoro_mode(query: str) -> int:
+    """Handle pomodoro mode (triggered by >> prefix)."""
+    items: List[Dict[str, Any]] = []
+
+    # For >> mode, try to get fresh status from API (not stale fallback)
+    # If API fails, launch Obsidian
+    status = tn.get_pomodoro_status()
+    if status is None:
+        # API failed - launch Obsidian and show loading
+        _launch_obsidian_best_effort()
+        _alfred_output([
+            _alfred_item(
+                "Opening Obsidian…",
+                "Waiting for TaskNotes API. Keep Alfred open.",
+                valid=False,
+            )
+        ], rerun=1.0)
+        return 0
+
+    # Convert to dict format
+    pomo_status = {
+        "has_session": status.has_session,
+        "is_running": status.is_running,
+        "is_paused": status.is_paused,
+        "time_remaining": status.time_remaining,
+        "session_type": status.session_type,
+        "task_id": status.task_id,
+        "task_title": status.task_title,
+        "total_pomodoros": status.total_pomodoros,
+        "current_streak": status.current_streak,
+    }
+
+    has_session = pomo_status.get("has_session", False)
+    is_running = pomo_status.get("is_running", False)
+    is_paused = pomo_status.get("is_paused", False)
+    time_remaining = pomo_status.get("time_remaining", 0)
+    task_title = pomo_status.get("task_title") or ""
+    task_id = pomo_status.get("task_id") or ""
+
+    # Get tomato icon path
+    tomato_icon = get_emoji_icon_path("🍅", "pomodoro")
+    icon_dict = {"path": tomato_icon} if tomato_icon else {}
+
+    if not query:
+        # Empty query: show status and controls
+        if has_session:
+            # Session exists (active or paused) - show status
+            time_str = _format_pomodoro_time(time_remaining)
+            pause_str = " (paused)" if is_paused else ""
+            status_title = f"{time_str} remaining{pause_str}"
+            status_subtitle = f"Working on: {task_title}" if task_title else "Focus session"
+
+            status_item: Dict[str, Any] = {
+                "uid": "pomodoro-1-status",
+                "title": status_title,
+                "subtitle": status_subtitle,
+                "valid": True,
+                "arg": json.dumps({"action": "open_pomodoro_view"}, ensure_ascii=False),
+            }
+            if icon_dict:
+                status_item["icon"] = icon_dict
+            # Add Cmd+Enter to open task in Obsidian
+            if task_id:
+                status_item["mods"] = {
+                    "cmd": {
+                        "subtitle": "⌘↩ Open task in Obsidian",
+                        "arg": json.dumps({"action": "open", "path": task_id}, ensure_ascii=False),
+                        "valid": True,
+                    }
+                }
+            items.append(status_item)
+
+            # Pause/Resume control
+            if is_paused:
+                resume_item: Dict[str, Any] = {
+                    "uid": "pomodoro-2-pause-resume",
+                    "title": "Resume Pomodoro",
+                    "subtitle": "▶ Continue the timer",
+                    "valid": True,
+                    "arg": json.dumps({"action": "resume_pomodoro"}, ensure_ascii=False),
+                }
+                resume_icon = get_emoji_icon_path("▶️", "action_resume")
+                if resume_icon:
+                    resume_item["icon"] = {"path": resume_icon}
+                items.append(resume_item)
+            else:
+                pause_item: Dict[str, Any] = {
+                    "uid": "pomodoro-2-pause-resume",
+                    "title": "Pause Pomodoro",
+                    "subtitle": "⏸ Pause the timer",
+                    "valid": True,
+                    "arg": json.dumps({"action": "pause_pomodoro"}, ensure_ascii=False),
+                }
+                pause_icon = get_emoji_icon_path("⏸️", "action_pause")
+                if pause_icon:
+                    pause_item["icon"] = {"path": pause_icon}
+                items.append(pause_item)
+
+            # Stop control (always available when session exists)
+            stop_item: Dict[str, Any] = {
+                "uid": "pomodoro-3-stop",
+                "title": "Stop Pomodoro",
+                "subtitle": "⏹ End session early",
+                "valid": True,
+                "arg": json.dumps({"action": "stop_pomodoro"}, ensure_ascii=False),
+            }
+            stop_icon = get_emoji_icon_path("⏹️", "action_stop")
+            if stop_icon:
+                stop_item["icon"] = {"path": stop_icon}
+            items.append(stop_item)
+
+            # Go back option (consistent with task_actions.py)
+            go_back_item: Dict[str, Any] = {
+                "uid": "pomodoro-4-go-back",
+                "title": "Go Back",
+                "subtitle": "Return to task list",
+                "valid": True,
+                "arg": json.dumps({"action": "go_back"}, ensure_ascii=False),
+            }
+            go_back_icon = get_emoji_icon_path("⬅️", "action_back")
+            if go_back_icon:
+                go_back_item["icon"] = {"path": go_back_icon}
+            items.append(go_back_item)
+        else:
+            # No session - show start options
+            start_item: Dict[str, Any] = {
+                "uid": "pomodoro-start",
+                "title": "Start Pomodoro",
+                "subtitle": "Start a 25-minute focus session (no task assigned)",
+                "valid": True,
+                "arg": json.dumps({"action": "start_pomodoro"}, ensure_ascii=False),
+            }
+            if icon_dict:
+                start_item["icon"] = icon_dict
+            items.append(start_item)
+
+            # Show recent tasks as quick picks
+            items.append(_alfred_item(
+                "Start with a task…",
+                "Type to search for a task to focus on",
+                valid=False,
+            ))
+
+        _alfred_output(items, rerun=1.0 if has_session else None)
+        return 0
+
+    # Query provided: search for tasks to start pomodoro with
+    fetch_limit = max(1, TASK_FETCH_LIMIT)
+    return_limit = max(1, TASK_RETURN_LIMIT)
+
+    tasks_raw, rerun = _fetch_tasks_with_cache(fetch_limit)
+    if not tasks_raw:
+        _alfred_output([_alfred_item(
+            "No tasks found",
+            "Create a task first, then start a pomodoro",
+            valid=False,
+        )])
+        return 0
+
+    # Filter and rank tasks
+    visible_sorted = _filter_and_rank_tasks(tasks_raw, query)[:return_limit]
+
+    # Build task items for pomodoro selection
+    for t in visible_sorted:
+        title = str(get_field(t, "title", "") or "").strip() or "(Untitled task)"
+        path = str(get_field(t, "path", "") or "").strip()
+        subtitle = _build_subtitle(t, _csv_fields(TASK_SUBTITLE_FIELDS))
+
+        item: Dict[str, Any] = {
+            "title": title,
+            "subtitle": f"Start pomodoro • {subtitle}" if subtitle else "Start pomodoro",
+            "valid": True,
+            "arg": json.dumps({"action": "start_pomodoro", "path": path}, ensure_ascii=False),
+        }
+        if icon_dict:
+            item["icon"] = icon_dict
+        items.append(item)
+
+    if not items:
+        items.append(_alfred_item(
+            f'No tasks matching "{query}"',
+            "Try a different search",
+            valid=False,
+        ))
+
+    _alfred_output(items, rerun=rerun)
     return 0
 
 
@@ -839,6 +1075,53 @@ def _handle_search_mode(query: str) -> int:
         subtitle_fields=subtitle_fields,
     )
 
+    # Build pinned pomodoro status item (if session exists and no query)
+    pomodoro_pinned_item: Optional[Dict[str, Any]] = None
+    if not query:
+        pomo_status = _get_pomodoro_status_cached()
+        if pomo_status and pomo_status.get("has_session"):
+            time_remaining = pomo_status.get("time_remaining", 0)
+            is_paused = pomo_status.get("is_paused", False)
+            is_running = pomo_status.get("is_running", False)
+            task_title = pomo_status.get("task_title") or "Focus session"
+            task_id = pomo_status.get("task_id") or ""
+
+            time_str = _format_pomodoro_time(time_remaining)
+            pause_str = " (paused)" if is_paused else ""
+            title = f"🍅 {time_str}{pause_str} • {task_title}"
+
+            subtitle = "Pomodoro paused • ↩ to manage" if is_paused else "Pomodoro in progress • ↩ to manage"
+
+            pomodoro_pinned_item = {
+                "uid": "pomodoro-pinned-status",
+                "title": title,
+                "subtitle": subtitle,
+                "valid": True,
+                "arg": json.dumps({"action": "open_pomodoro_controls"}, ensure_ascii=False),
+            }
+            # Add modifiers for pomodoro actions
+            pause_resume_action = "resume_pomodoro" if is_paused else "pause_pomodoro"
+            pause_resume_label = "Resume" if is_paused else "Pause"
+
+            pomodoro_pinned_item["mods"] = {
+                "cmd": {
+                    "subtitle": "⌘↩ Open task in Obsidian" if task_id else "⌘↩ Open pomodoro timer in Obsidian",
+                    "arg": json.dumps({"action": "open", "path": task_id}, ensure_ascii=False) if task_id
+                           else json.dumps({"action": "open_pomodoro_view"}, ensure_ascii=False),
+                    "valid": True,
+                },
+                "alt": {
+                    "subtitle": f"⌥↩ {pause_resume_label} pomodoro",
+                    "arg": json.dumps({"action": pause_resume_action}, ensure_ascii=False),
+                    "valid": True,
+                },
+                "ctrl": {
+                    "subtitle": "⌃↩ Stop pomodoro",
+                    "arg": json.dumps({"action": "stop_pomodoro"}, ensure_ascii=False),
+                    "valid": True,
+                },
+            }
+
     # Build filter label for empty state
     filter_labels = {
         "today": "today",
@@ -853,6 +1136,11 @@ def _handle_search_mode(query: str) -> int:
 
     # Assemble output: create last when results exist, first when no results
     items: List[Dict[str, Any]] = []
+
+    # Pin pomodoro status at top when running
+    if pomodoro_pinned_item:
+        items.append(pomodoro_pinned_item)
+
     if not task_items:
         if create_item:
             items.append(create_item)
@@ -883,7 +1171,12 @@ def _handle_search_mode(query: str) -> int:
         if create_item:
             items.append(create_item)
 
-    _alfred_output(items, rerun=rerun)
+    # Use rerun to update pomodoro timer display
+    effective_rerun = rerun
+    if pomodoro_pinned_item and not effective_rerun:
+        effective_rerun = 1.0  # Refresh every second when pomodoro is running
+
+    _alfred_output(items, rerun=effective_rerun)
     return 0
 
 
@@ -894,6 +1187,10 @@ def main() -> int:
     """Main entry point for the script filter."""
     query = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
     mode = (os.environ.get("MODE") or "").strip().lower()
+
+    # Prefix-based mode: ">>" switches to pomodoro mode
+    if query.startswith(">>"):
+        return _handle_pomodoro_mode(query[2:].strip())
 
     # Prefix-based mode: ">" switches to create-focused mode
     if query.startswith(">"):
