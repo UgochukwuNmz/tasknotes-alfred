@@ -507,7 +507,7 @@ def parse_create_input(raw: str, *, today: Optional[date] = None) -> ParsedCreat
         #   - double spaces ("  ")
         d = (after or "").strip()
         if d:
-            d = d.replace("\\n", "\n")
+            d = re.sub(r" *\\n *", "\n", d)
             # Convert 2+ spaces into a single newline.
             d = re.sub(r" {2,}", "\n", d)
             details = d

@@ -72,7 +72,7 @@ External Trigger (main) → Script Filter (for "Go Back")
 4. **`src/nlp_task_create.py`** - Natural Language Date/Metadata Parser
    - Parses quick-add strings into structured task metadata
    - Supports: dates (today, tomorrow, weekdays, ISO, US format, relative offsets like "in 2 weeks")
-   - Supports: priority (p1/p2/p3), tags (#tag), projects (+Project Name), details (after `//`)
+   - Supports: priority (p1/p2/p3), tags (#tag), projects (+Project Name), details (after `//`, with `\n` for newlines—spaces around `\n` are trimmed)
    - Bare dates default to scheduled; explicit keywords (`due`, `by`) set due date
 
 5. **`src/tasknotes_alfred.py`** - TaskNotes API Client

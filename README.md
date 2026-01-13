@@ -178,9 +178,11 @@ Buy groceries tomorrow // milk, eggs, bread
 For multi-line details, use `\n` or double spaces:
 
 ```
-Meeting notes // Point 1\\nPoint 2\\nPoint 3
+Meeting notes // Point 1 \n Point 2 \n Point 3
 Shopping list // eggs  milk  bread
 ```
+
+Spaces around `\n` are automatically trimmed, so `line 1 \n line 2` produces clean lines without leading/trailing spaces.
 
 ### Examples
 
